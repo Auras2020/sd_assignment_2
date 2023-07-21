@@ -1,0 +1,99 @@
+version: '3'
+
+services:
+
+  postgres-db:
+    image: postgres
+
+#    healthcheck:
+#      test: ["CMD", "pg_isready", "-q", "-d", "postgres", "-U", "root"]
+#      timeout: 45s
+#      interval: 10s
+#      retries: 5
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=energy_platform
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    ports:
+      - "5433:5432"
+    container_name: postgres-db
+    networks:
+      - DS_SQL_SPRING
+
+
+#  backend:
+#    image: backend
+#    restart: always
+#    ports:
+#      - "8080:8080"
+#    environment:
+#      #- DB_IP=172.22.0.2
+##      - DB_IP=demo-db
+##      - RABBIT_IP=demo-rabbit
+#      - DB_IP=postgres
+#      - DB_PORT=5433
+#      - DB_USER=postgres
+#      - DB_PASSWORD=postgres
+#      - DB_DBNAME=energy_platform
+#    depends_on:
+#      - postgres-db
+#          condition: service_healthy
+
+  rabbitmq:
+    image: rabbitmq:3.9-management
+    container_name: rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+    volumes:
+      - ~/.docker-conf/rabbitmq/data/:/var/lib/rabbitmq/
+      - ~/.docker-conf/rabbitmq/log/:/var/log/rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    networks:
+      - DS_SQL_SPRING
+
+  backend:
+#    image: aurasovreiu30242.azurecr.io/online-energy-utility-platform-be:latest
+    depends_on:
+      - postgres-db
+      - rabbitmq
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: backend
+#    environment:
+#      - RABBIT_IP=rabbitmq:3-management
+    env_file:
+      - environment.env
+    ports:
+      - 8080:8080
+    expose:
+      - 8080
+    networks:
+      - DS_SQL_SPRING
+
+  frontend:
+      #image: aurasovreiu30242.azurecr.io/online-energy-utility-platform-fe:87
+      build:
+        context: C:\Users\Auras\Desktop\an4_sem1\sd\Assignment_2\online-energy-utility-platform-fe
+        dockerfile: ./Dockerfile
+      depends_on:
+        - postgres-db
+        - backend
+      env_file:
+        - environment.env
+      container_name: frontend
+      ports:
+        - 4200:4200
+      expose:
+        - 4200
+      networks:
+        - DS_SQL_SPRING
+
+networks:
+  DS_SQL_SPRING:
+    driver: bridge
